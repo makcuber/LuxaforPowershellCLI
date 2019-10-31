@@ -11,5 +11,7 @@ NOTE: You must manually set the correct WebHook LuxID in this script before runn
 Parameters:
 
 -colour <colour>  :  Set a specific colour
+ 
+-blink <colour>   :  Trigger a blink event to a specific colour
 
 -service          :  Enable service mode that changes the colour based on the machines Screen Lock state
