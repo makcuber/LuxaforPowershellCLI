@@ -2,14 +2,17 @@
 #Contact: mak.programming.labs@gmail.com
 #Desc: CLI tool for setting colour of Luxafor LED Status Flag, with option for running as background process that sets colour on screen lock
 
-#Set your Webhook ID here, make sure you update this is you re-generate the ID
-$luxID = "31428db53a0a"
+#The WebHook ID will load from the configPath file defined below, make sure you update this file if you re-generate the ID
+$luxID = ""
 
 #Duration inbetween Lock status scans
 $scanPeriod = 5
 
 #Toggle Console output
 $echoOn = $false
+
+#Config Path defaults to same directory as the script
+$configPath = "./luxid.conf"
 
 #API info: https://luxafor.com/webhook-api/
 $APIurl = @{
@@ -36,6 +39,24 @@ function echo {
         return $false
     }
 }
+function genConfig {
+    #get LuxID from user via CLI, write to config file
+    Write-Host "Error: No config file found"
+}
+function config {
+    if ((Test-Path -Path $configPath) -eq $true) {
+        echo "Config file found"
+        $testLuxID = $(Get-Content -Path $configPath)
+        echo "LuxID: $testLuxID"
+
+        #add luxID valiation here
+
+        $luxID = $testLuxID
+    } else {
+        genConfig
+    }
+}
+
 function validateItem {
     Param($item,$array)
     $isValid = $false
@@ -191,6 +212,9 @@ function showHelp {
 echo "echoOn: $echoOn"
 echo "Args: $args"
 echo ""
+
+config
+
 switch ($args[0]) {
     -colour { setColour -colour $args[1]; break }
     -blink { setBlink -colour $args[1]; break }
