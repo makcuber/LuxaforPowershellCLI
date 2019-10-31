@@ -3,6 +3,13 @@ A Powershell CLI script for controlling a Luxafor LED Status Flag using the Luxa
 
 WebHook API information is available on the Luxafor website: https://luxafor.com/webhook-api/
 
+Installation
+------------
+1. Install the official Luxafore app for Windows 10 (https://luxafor.com/download/)
+2. Clone the repo to your local machine
+3. Generate a WebHook in the Luxafor app and copy it to the luxps.ps1 script in the repo
+4. Run the script using the parameters outlined below
+
 Help Menu
 ---------
  
