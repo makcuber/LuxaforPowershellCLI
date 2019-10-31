@@ -36,20 +36,28 @@ function echo {
         return $false
     }
 }
-function validateColour {
-    Param($colour)
+function validateItem {
+    Param($item,$array)
     $isValid = $false
 
-    echo $colour
-    foreach ($testColour in $colours) {
-        if ($testColour -eq $colour) {
-            echo "Test Colour: $testColour"
+    echo $item
+    foreach ($testItem in $array) {
+        if ($testItem -eq $item) {
+            echo "Test Item: $testItem"
             $isValid = $true
             break
         }
     }
     echo $isValid
     return $isValid
+}
+function validateColour {
+    Param($colour)
+    return $(validateItem -item $colour -array $colours)
+}
+function validatePattern {
+    Param($pattern)
+    return $(validateItem -item $pattern -array $patterns)
 }
 function listArray {
     Param($array)
@@ -59,6 +67,9 @@ function listArray {
 }
 function listColours {
     listArray -array $colours
+}
+function listPatterns {
+    listArray -array $patterns
 }
 function setColour {
     Param($colour)
@@ -101,11 +112,36 @@ function setBlink {
 
         Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host "Error: Invalid Colour \"$colour\""
+        Write-Host 'Error: Invalid Colour "'$colour'"'
+        Write-Host ""
         Write-Host "Valid colours are: "
         listColours
     }
-}  
+}
+function setPattern {
+    Param($pattern)
+
+    if ((validatePattern -pattern $pattern) -eq $true) {
+        $jsonData = @{
+            userId = $luxID
+            actionFields = @{ pattern = $pattern }
+        }
+
+        $params = @{
+            Uri         = $APIurl['pattern']
+            Method      = 'POST'
+            Body        = ConvertTo-Json $jsonData
+            ContentType = 'application/json'
+        }
+
+        Invoke-RestMethod @params -UseDefaultCredentials
+    } else {
+        Write-Host 'Error: Invalid pattern "'$pattern'"'
+        Write-Host ""
+        Write-Host "Valid paterns are: "
+        listPatterns
+    }
+}    
 function serviceMode {
     $onlineLock = $false
     echo "scanPeriod: $scanPeriod"
@@ -140,6 +176,8 @@ function showHelp {
     Write-Host ""
     Write-Host "Parameters:"
     Write-Host " -colour <colour>  :  Set a specific colour"
+    Write-Host " -blink <colour>   :  Trigger a blink event to a specific colour"
+    Write-Host " -pattern <pattern>:  Trigger a pattern event"
     Write-Host " -service          :  Enable service mode that changes the colour based on the machines Screen Lock state"
     Write-Host ""
 }
@@ -152,9 +190,11 @@ function showHelp {
 #}
 echo "echoOn: $echoOn"
 echo "Args: $args"
+echo ""
 switch ($args[0]) {
     -colour { setColour -colour $args[1]; break }
     -blink { setBlink -colour $args[1]; break }
+    -pattern { setPattern -pattern $args[1]; break }
     -service { serviceMode; break }
     default { showHelp; break}
 }
