@@ -1,5 +1,5 @@
 # LuxaforPowershellCLI
-A Powershell CLI script for controlling a Luxafor LED Status Flag using the Luxafor Webhook API
+A Powershell CLI script for controlling a Luxafor LED Status Flag using the Luxafor WebHook REST API
 
 WebHook API information is available on the Luxafor website: https://luxafor.com/webhook-api/
 
