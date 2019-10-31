@@ -13,5 +13,7 @@ Parameters:
 -colour <colour>  :  Set a specific colour
  
 -blink <colour>   :  Trigger a blink event to a specific colour
+ 
+-pattern <pattern>:  Trigger a pattern event
 
 -service          :  Enable service mode that changes the colour based on the machines Screen Lock state
