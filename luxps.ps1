@@ -83,6 +83,29 @@ function setColour {
         listColours
     }
 }
+function setBlink {
+    Param($colour)
+
+    if ((validateColour -colour $colour) -eq $true) {
+        $jsonData = @{
+            userId = $luxID
+            actionFields = @{ color = $colour }
+        }
+
+        $params = @{
+            Uri         = $APIurl['blink']
+            Method      = 'POST'
+            Body        = ConvertTo-Json $jsonData
+            ContentType = 'application/json'
+        }
+
+        Invoke-RestMethod @params -UseDefaultCredentials
+    } else {
+        Write-Host "Error: Invalid Colour \"$colour\""
+        Write-Host "Valid colours are: "
+        listColours
+    }
+}  
 function serviceMode {
     $onlineLock = $false
     echo "scanPeriod: $scanPeriod"
@@ -131,6 +154,7 @@ echo "echoOn: $echoOn"
 echo "Args: $args"
 switch ($args[0]) {
     -colour { setColour -colour $args[1]; break }
+    -blink { setBlink -colour $args[1]; break }
     -service { serviceMode; break }
     default { showHelp; break}
 }
