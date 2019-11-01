@@ -3,13 +3,13 @@
 #Desc: CLI tool for setting colour of Luxafor LED Status Flag, with option for running as background process that sets colour on screen lock
 
 #The WebHook ID will load from the configPath file defined below, make sure you update this file if you re-generate the ID
-$luxID = ""
+$global:luxID = ""
 
 #Duration inbetween Lock status scans
 $scanPeriod = 5
 
 #Toggle Console output
-$echoOn = $false
+$global:echoOn = $false
 
 #Config Path defaults to same directory as the script
 $configPath = "./luxid.conf"
@@ -31,12 +31,13 @@ $patterns = "police", "traffic lights", "random 1", "random 2", "random 3", "ran
 $extraWindowsOnlyPatterns = "rainbow", "sea", "white wave", "synthetic"
 
 #Functions
-function echo {
-    if ($echoOn -eq $true) {
+function verbose {
+    #Write-Host $global:echoOn
+    if ($global:echoOn -eq $true) {
         Write-Host $args[0]
-        return $true
+        #return $true
     } else {
-        return $false
+        #return $false
     }
 }
 function genConfig {
@@ -45,13 +46,15 @@ function genConfig {
 }
 function config {
     if ((Test-Path -Path $configPath) -eq $true) {
-        echo "Config file found"
+        verbose "Config file found"
         $testLuxID = $(Get-Content -Path $configPath)
-        echo "LuxID: $testLuxID"
+        verbose "Imported LuxID: $testLuxID"
 
         #add luxID valiation here
 
-        $luxID = $testLuxID
+        $global:luxID = $testLuxID
+        verbose "LuxID Set: $global:luxID"
+        verbose ""
     } else {
         genConfig
     }
@@ -61,15 +64,15 @@ function validateItem {
     Param($item,$array)
     $isValid = $false
 
-    echo $item
+    verbose $item
     foreach ($testItem in $array) {
         if ($testItem -eq $item) {
-            echo "Test Item: $testItem"
+            verbose "Test Item: $testItem"
             $isValid = $true
             break
         }
     }
-    echo $isValid
+    verbose $isValid
     return $isValid
 }
 function validateColour {
@@ -94,12 +97,14 @@ function listPatterns {
 }
 function setColour {
     Param($colour)
-
+    verbose "LuxID: $global:luxID"
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = $luxID
+            userId = $global:luxID
             actionFields = @{ color = $colour }
         }
+        
+        #listArray -array $jsonData
 
         $params = @{
             Uri         = $APIurl['solid']
@@ -120,7 +125,7 @@ function setBlink {
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = $luxID
+            userId = $global:luxID
             actionFields = @{ color = $colour }
         }
 
@@ -144,7 +149,7 @@ function setPattern {
 
     if ((validatePattern -pattern $pattern) -eq $true) {
         $jsonData = @{
-            userId = $luxID
+            userId = $global:luxID
             actionFields = @{ pattern = $pattern }
         }
 
@@ -165,7 +170,7 @@ function setPattern {
 }    
 function serviceMode {
     $onlineLock = $false
-    echo "scanPeriod: $scanPeriod"
+    verbose "scanPeriod: $scanPeriod"
     while ($true)
     {
         start-sleep $scanPeriod
@@ -173,7 +178,7 @@ function serviceMode {
         $currentuser = gwmi -Class win32_computersystem | select -ExpandProperty username
         $process = get-process logonui -ea silentlycontinue
         $lockState = ($currentuser -and $process)
-        echo "LockState: $lockState"
+        verbose "LockState: $lockState"
 
         if ($lockState -eq $true) {
             $onlineLock = $false
@@ -184,8 +189,8 @@ function serviceMode {
                 $onlineLock = $true
             }
         }
-        echo "OnlineLock: $onlineLock"
-        echo ""
+        verbose "OnlineLock: $onlineLock"
+        verbose ""
     }
 }
 function showHelp {
@@ -206,14 +211,15 @@ function showHelp {
 #Main
 #Param($verbose)
 #if ($verbose.GetType().FullName -eq "System.Boolean") {
-#    $echoOn = $verbose
-#    echo "Verbose: $echoON"
+#    $global:echoOn = $verbose
+#    verbose "Verbose: $global:echoOn"
 #}
-echo "echoOn: $echoOn"
-echo "Args: $args"
-echo ""
+verbose "echoOn: $global:echoOn"
+verbose "Args: $args"
+verbose ""
 
 config
+verbose "LuxID: $global:luxID"
 
 switch ($args[0]) {
     -colour { setColour -colour $args[1]; break }
