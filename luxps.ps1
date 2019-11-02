@@ -2,6 +2,8 @@
 #Contact: mak.programming.labs@gmail.com
 #Desc: CLI tool for setting colour of Luxafor LED Status Flag, with option for running as background process that sets colour on screen lock
 
+#version: 0.0.1
+
 #Set your Webhook ID here, make sure you update this is you re-generate the ID
 $luxID = "31428db53a0a"
 
