@@ -205,7 +205,7 @@ function setPattern {
     }
 }    
 function serviceMode {
-    $onlineLock = $false
+    $onlineState = $false #bool to track the current colour state (online vs. locked)
     echoVerbose "scanPeriod: $scanPeriod"
     while ($true)
     {
@@ -217,15 +217,15 @@ function serviceMode {
         Write-Host "LockState: $lockState"
 
         if ($lockState -eq $true) {
-            $onlineLock = $false
+            $onlineState = $false
             setColour -colour $lockColour
         } else {
-            if ($onlineLock -eq $false) {
+            if ($onlineState -eq $false) {
                 setColour -colour $onlineColour
-                $onlineLock = $true
+                $onlineState = $true
             }
         }
-        echoVerbose "OnlineLock: $onlineLock"
+        echoVerbose "onlineState: $onlineState"
         echoVerbose ""
     }
 }
