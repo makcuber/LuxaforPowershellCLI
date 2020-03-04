@@ -16,6 +16,9 @@ $global:echoOn = $verbose
 #Config Path defaults to same directory as the script
 $configPath = "./luxid.conf"
 
+#Count of how many times an error has looped
+$global:errorLoopCount=0
+
 #API info: https://luxafor.com/webhook-api/
 $APIurl = @{
     solid = "https://api.luxafor.com/webhook/v1/actions/solid_color" #accepts any colour in colours array
@@ -42,9 +45,39 @@ function echoVerbose {
         #return $false
     }
 }
+
+function verifyLuxID {
+    Param([Boolean]$writeID=$false,[string]$testLuxID,[int]$errorLoop)
+    if ($testLuxID -eq "") {
+        if ($writeID) { 
+            Write-Host "Error: No Webhook ID provided"
+            $global:errorLoopCount++
+            echoVerbose "ErrorLoop: $errorLoop"
+            genConfig -error $true
+        } else {
+            Write-Host "Error: Config file is empty"    
+            genConfig
+        }
+    } else {
+        $global:luxID = $testLuxID
+    }
+
+    #the errorLoop check prevents the config from being writen multiple times if there was an error getting input from the user
+    if ($writeID -and ($errorLoop -eq $errorLoopCount) ) {
+        Out-File -FilePath $configPath -InputObject $testLuxID
+        Write-Host "Wrote webhook ID to config file" 
+        $global:luxID = $testLuxID
+    }
+    echoVerbose "ErrorLoop: $errorLoop" 
+}
 function genConfig {
     #get LuxID from user via CLI, write to config file
-    Write-Host "Error: No config file found"
+    Write-Host ""
+    Write-Host "Generate a Luxafor webhook ID from the Luxafor app"
+    Write-Host "In v2 of the app, this is located under General>Webhook"
+    Write-Host ""
+    $testLuxID = Read-Host "Enter your Luxafor Webhook ID"
+    verifyLuxID -writeID $true -testLuxID $testLuxID -errorLoop $global:errorLoopCount
 }
 function config {
     if ((Test-Path -Path $configPath) -eq $true) {
@@ -53,11 +86,12 @@ function config {
         echoVerbose "Imported LuxID: $testLuxID"
 
         #add luxID valiation here
+        verifyLuxID -testLuxID $testLuxID
 
-        $global:luxID = $testLuxID
         Write-Host "LuxID Set: $global:luxID"
         Write-Host ""
     } else {
+        Write-Host "Error: No config file found"
         genConfig
     }
 }
@@ -78,11 +112,11 @@ function validateItem {
     return $isValid
 }
 function validateColour {
-    Param([String]$colour)
+    Param([string]$colour)
     return $(validateItem -item $colour -array $colours)
 }
 function validatePattern {
-    Param([String]$pattern)
+    Param([string]$pattern)
     return $(validateItem -item $pattern -array $patterns)
 }
 function listArray {
@@ -98,7 +132,7 @@ function listPatterns {
     listArray -array $patterns
 }
 function setColour {
-    Param([String]$colour,[String]$luxid_passed)
+    Param([string]$colour,[string]$luxid_passed)
     
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
@@ -121,7 +155,7 @@ function setColour {
     }
 }
 function setBlink {
-    Param([String]$colour,[String]$luxid_passed)
+    Param([string]$colour,[string]$luxid_passed)
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
@@ -145,7 +179,7 @@ function setBlink {
     }
 }
 function setPattern {
-    Param([String]$pattern,[String]$luxid_passed)
+    Param([string]$pattern,[string]$luxid_passed)
 
     if ((validatePattern -pattern $pattern) -eq $true) {
         $jsonData = @{
