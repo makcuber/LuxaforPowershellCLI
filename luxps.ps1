@@ -98,23 +98,21 @@ function listPatterns {
     listArray -array $patterns
 }
 function setColour {
-    Param($colour)
+    Param($colour,$luxid_passed)
     
     if ((validateColour -colour $colour) -eq $true) {
-        $tmp=$global:luxID
-        $jsonData = @(
-            @{
-                userId = $tmp
-                actionFields = @{ color = $colour }
-            }
-        )
+        $jsonData = @{
+            userId = "$luxid_passed"
+            actionFields = @{ color = "$colour" }
+        } | ConvertTo-Json
         
         #listArray -array $jsonData
-        echoVerbose "LuxID2: $jsonData['userId'].value"
+        $j = $jsonData | ConvertFrom-Json
+        echoVerbose "LuxID2: $j"
         $params = @{
             Uri         = $APIurl['solid']
             Method      = 'POST'
-            Body        = ConvertTo-Json $jsonData
+            Body        = $jsonData
             ContentType = 'application/json'
         }
 
@@ -126,14 +124,14 @@ function setColour {
     }
 }
 function setBlink {
-    Param($colour)
+    Param($colour,$luxid_passed)
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = $global:luxID
+            userId = $luxid_passed
             actionFields = @{ color = $colour }
         }
-        echo "$global:luxID"
+        echo "$luxid_passed"
         $params = @{
             Uri         = $APIurl['blink']
             Method      = 'POST'
@@ -227,8 +225,8 @@ config
 echoVerbose "LuxID: $global:luxID"
 
 switch ($args[0]) {
-    -colour { setColour -colour $args[1]; break }
-    -blink { setBlink -colour $args[1]; break }
+    -colour { setColour -colour $args[1] -luxid_passed $global:luxID; break }
+    -blink { setBlink -colour $args[1] -luxid_passed $global:luxID; break }
     -pattern { setPattern -pattern $args[1]; break }
     -service { serviceMode; break }
     default { showHelp; break}
