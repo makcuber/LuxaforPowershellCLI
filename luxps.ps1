@@ -11,7 +11,7 @@ $global:luxID = ""
 $scanPeriod = 5
 
 #Toggle Console output
-$global:echoOn = $true
+$global:echoOn = $verbose
 
 #Config Path defaults to same directory as the script
 $configPath = "./luxid.conf"
@@ -48,15 +48,15 @@ function genConfig {
 }
 function config {
     if ((Test-Path -Path $configPath) -eq $true) {
-        echoVerbose "Config file found"
+        Write-Host "Config file found"
         $testLuxID = $(Get-Content -Path $configPath)
         echoVerbose "Imported LuxID: $testLuxID"
 
         #add luxID valiation here
 
         $global:luxID = $testLuxID
-        echoVerbose "LuxID Set: $global:luxID"
-        echoVerbose ""
+        Write-Host "LuxID Set: $global:luxID"
+        Write-Host ""
     } else {
         genConfig
     }
@@ -78,11 +78,11 @@ function validateItem {
     return $isValid
 }
 function validateColour {
-    Param($colour)
+    Param([String]$colour)
     return $(validateItem -item $colour -array $colours)
 }
 function validatePattern {
-    Param($pattern)
+    Param([String]$pattern)
     return $(validateItem -item $pattern -array $patterns)
 }
 function listArray {
@@ -98,21 +98,18 @@ function listPatterns {
     listArray -array $patterns
 }
 function setColour {
-    Param($colour,$luxid_passed)
+    Param([String]$colour,[String]$luxid_passed)
     
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = "$luxid_passed"
+            userId = "$luxid_passed" #must be in qoutes
             actionFields = @{ color = "$colour" }
         } | ConvertTo-Json
         
-        #listArray -array $jsonData
-        $j = $jsonData | ConvertFrom-Json
-        echoVerbose "LuxID2: $j"
         $params = @{
             Uri         = $APIurl['solid']
             Method      = 'POST'
-            Body        = $jsonData
+            Body        = $jsonData #already in json format
             ContentType = 'application/json'
         }
 
@@ -124,18 +121,18 @@ function setColour {
     }
 }
 function setBlink {
-    Param($colour,$luxid_passed)
+    Param([String]$colour,[String]$luxid_passed)
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = $luxid_passed
+            userId = "$luxid_passed" #must be in qoutes
             actionFields = @{ color = $colour }
-        }
-        echo "$luxid_passed"
+        } | ConvertTo-Json
+
         $params = @{
             Uri         = $APIurl['blink']
             Method      = 'POST'
-            Body        = ConvertTo-Json $jsonData
+            Body        = $jsonData #already in json format
             ContentType = 'application/json'
         }
 
@@ -148,18 +145,18 @@ function setBlink {
     }
 }
 function setPattern {
-    Param($pattern)
+    Param([String]$pattern,[String]$luxid_passed)
 
     if ((validatePattern -pattern $pattern) -eq $true) {
         $jsonData = @{
-            userId = $global:luxID
+            userId = "$luxid_passed" #must be in qoutes
             actionFields = @{ pattern = $pattern }
-        }
+        } | ConvertTo-Json
 
         $params = @{
             Uri         = $APIurl['pattern']
             Method      = 'POST'
-            Body        = ConvertTo-Json $jsonData
+            Body        = $jsonData #already in json format
             ContentType = 'application/json'
         }
 
@@ -222,12 +219,11 @@ echoVerbose "Args: $args"
 echoVerbose ""
 
 config
-echoVerbose "LuxID: $global:luxID"
 
 switch ($args[0]) {
     -colour { setColour -colour $args[1] -luxid_passed $global:luxID; break }
     -blink { setBlink -colour $args[1] -luxid_passed $global:luxID; break }
-    -pattern { setPattern -pattern $args[1]; break }
+    -pattern { setPattern -pattern $args[1] -luxid_passed $global:luxID; break }
     -service { serviceMode; break }
     default { showHelp; break}
 }
