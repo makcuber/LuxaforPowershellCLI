@@ -2,14 +2,22 @@
 #Contact: mak.programming.labs@gmail.com
 #Desc: CLI tool for setting colour of Luxafor LED Status Flag, with option for running as background process that sets colour on screen lock
 
-#Set your Webhook ID here, make sure you update this is you re-generate the ID
-$luxID = "31428db53a0a"
+param([boolean]$verbose)
+
+#The WebHook ID will load from the configPath file defined below, make sure you update this file if you re-generate the ID
+$global:luxID = ""
 
 #Duration inbetween Lock status scans
 $scanPeriod = 5
 
 #Toggle Console output
-$echoOn = $false
+$global:echoOn = $verbose
+
+#Config Path defaults to same directory as the script
+$configPath = "./luxid.conf"
+
+#Count of how many times an error has looped
+$global:errorLoopCount=0
 
 #API info: https://luxafor.com/webhook-api/
 $APIurl = @{
@@ -28,35 +36,88 @@ $patterns = "police", "traffic lights", "random 1", "random 2", "random 3", "ran
 $extraWindowsOnlyPatterns = "rainbow", "sea", "white wave", "synthetic"
 
 #Functions
-function echo {
-    if ($echoOn -eq $true) {
+function echoVerbose {
+    #Write-Host $global:echoOn
+    if ($global:echoOn -eq $true) {
         Write-Host $args[0]
-        return $true
+        #return $true
     } else {
-        return $false
+        #return $false
     }
 }
+
+function verifyLuxID {
+    Param([Boolean]$writeID=$false,[string]$testLuxID,[int]$errorLoop)
+    if ($testLuxID -eq "") {
+        if ($writeID) { 
+            Write-Host "Error: No Webhook ID provided"
+            $global:errorLoopCount++
+            echoVerbose "ErrorLoop: $errorLoop"
+            genConfig -error $true
+        } else {
+            Write-Host "Error: Config file is empty"    
+            genConfig
+        }
+    } else {
+        $global:luxID = $testLuxID
+    }
+
+    #the errorLoop check prevents the config from being writen multiple times if there was an error getting input from the user
+    if ($writeID -and ($errorLoop -eq $errorLoopCount) ) {
+        Out-File -FilePath $configPath -InputObject $testLuxID
+        Write-Host "Wrote webhook ID to config file" 
+        $global:luxID = $testLuxID
+    }
+    echoVerbose "ErrorLoop: $errorLoop" 
+}
+function genConfig {
+    #get LuxID from user via CLI, write to config file
+    Write-Host ""
+    Write-Host "Generate a Luxafor webhook ID from the Luxafor app"
+    Write-Host "In v2 of the app, this is located under General>Webhook"
+    Write-Host ""
+    $testLuxID = Read-Host "Enter your Luxafor Webhook ID"
+    verifyLuxID -writeID $true -testLuxID $testLuxID -errorLoop $global:errorLoopCount
+}
+function config {
+    Write-Host ""
+    if ((Test-Path -Path $configPath) -eq $true) {
+        Write-Host "Config file found"
+        $testLuxID = $(Get-Content -Path $configPath)
+        echoVerbose "Imported LuxID: $testLuxID"
+
+        #add luxID valiation here
+        verifyLuxID -testLuxID $testLuxID
+
+        Write-Host "LuxID Set: $global:luxID"
+        Write-Host ""
+    } else {
+        Write-Host "Error: No config file found"
+        genConfig
+    }
+}
+
 function validateItem {
     Param($item,$array)
     $isValid = $false
 
-    echo $item
+    echoVerbose $item
     foreach ($testItem in $array) {
         if ($testItem -eq $item) {
-            echo "Test Item: $testItem"
+            echoVerbose "Test Item: $testItem"
             $isValid = $true
             break
         }
     }
-    echo $isValid
+    echoVerbose $isValid
     return $isValid
 }
 function validateColour {
-    Param($colour)
+    Param([string]$colour)
     return $(validateItem -item $colour -array $colours)
 }
 function validatePattern {
-    Param($pattern)
+    Param([string]$pattern)
     return $(validateItem -item $pattern -array $patterns)
 }
 function listArray {
@@ -64,6 +125,7 @@ function listArray {
     foreach ($item in $array) {
         Write-Host " - $item"
     }
+    Write-Host ""
 }
 function listColours {
     listArray -array $colours
@@ -72,71 +134,71 @@ function listPatterns {
     listArray -array $patterns
 }
 function setColour {
-    Param($colour)
-
+    Param([string]$colour)
+    
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = $luxID
-            actionFields = @{ color = $colour }
-        }
-
+            userId = "$global:luxID" #must be in qoutes
+            actionFields = @{ color = "$colour" }
+        } | ConvertTo-Json
+        
         $params = @{
             Uri         = $APIurl['solid']
             Method      = 'POST'
-            Body        = ConvertTo-Json $jsonData
+            Body        = $jsonData #already in json format
             ContentType = 'application/json'
         }
 
-        Invoke-RestMethod @params -UseDefaultCredentials
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host "Error: Invalid Colour \"$colour\""
+        Write-Host "Error: Invalid Colour ($colour)"
         Write-Host "Valid colours are: "
         listColours
     }
 }
 function setBlink {
-    Param($colour)
+    Param([string]$colour)
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = $luxID
+            userId = "$global:luxID" #must be in qoutes
             actionFields = @{ color = $colour }
-        }
+        } | ConvertTo-Json
 
         $params = @{
             Uri         = $APIurl['blink']
             Method      = 'POST'
-            Body        = ConvertTo-Json $jsonData
+            Body        = $jsonData #already in json format
             ContentType = 'application/json'
         }
 
-        Invoke-RestMethod @params -UseDefaultCredentials
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host 'Error: Invalid Colour "'$colour'"'
+        Write-Host "Error: Invalid Colour ($colour)"
         Write-Host ""
         Write-Host "Valid colours are: "
         listColours
     }
 }
 function setPattern {
-    Param($pattern)
+    Param([string]$pattern)
 
     if ((validatePattern -pattern $pattern) -eq $true) {
         $jsonData = @{
-            userId = $luxID
+            userId = "$global:luxID" #must be in qoutes
             actionFields = @{ pattern = $pattern }
-        }
+        } | ConvertTo-Json
 
         $params = @{
             Uri         = $APIurl['pattern']
             Method      = 'POST'
-            Body        = ConvertTo-Json $jsonData
+            Body        = $jsonData #already in json format
             ContentType = 'application/json'
         }
 
-        Invoke-RestMethod @params -UseDefaultCredentials
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host 'Error: Invalid pattern "'$pattern'"'
+        Write-Host "Error: Invalid pattern $pattern"
         Write-Host ""
         Write-Host "Valid paterns are: "
         listPatterns
@@ -144,7 +206,7 @@ function setPattern {
 }    
 function serviceMode {
     $onlineLock = $false
-    echo "scanPeriod: $scanPeriod"
+    echoVerbose "scanPeriod: $scanPeriod"
     while ($true)
     {
         start-sleep $scanPeriod
@@ -152,7 +214,7 @@ function serviceMode {
         $currentuser = gwmi -Class win32_computersystem | select -ExpandProperty username
         $process = get-process logonui -ea silentlycontinue
         $lockState = ($currentuser -and $process)
-        echo "LockState: $lockState"
+        Write-Host "LockState: $lockState"
 
         if ($lockState -eq $true) {
             $onlineLock = $false
@@ -163,8 +225,8 @@ function serviceMode {
                 $onlineLock = $true
             }
         }
-        echo "OnlineLock: $onlineLock"
-        echo ""
+        echoVerbose "OnlineLock: $onlineLock"
+        echoVerbose ""
     }
 }
 function showHelp {
@@ -183,14 +245,17 @@ function showHelp {
 }
 
 #Main
-#Param($verbose)
 #if ($verbose.GetType().FullName -eq "System.Boolean") {
-#    $echoOn = $verbose
-#    echo "Verbose: $echoON"
+#    $global:echoOn = $verbose
+#    Write-Host $verbose
+#    echoVerbose "Verbose: $global:echoOn"
 #}
-echo "echoOn: $echoOn"
-echo "Args: $args"
-echo ""
+echoVerbose "echoOn: $global:echoOn"
+echoVerbose "Args: $args"
+echoVerbose ""
+
+config
+
 switch ($args[0]) {
     -colour { setColour -colour $args[1]; break }
     -blink { setBlink -colour $args[1]; break }

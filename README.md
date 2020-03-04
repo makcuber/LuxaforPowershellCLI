@@ -10,6 +10,13 @@ Installation
 3. Generate a WebHook in the Luxafor app and copy it to the luxps.ps1 script in the repo
 4. Run the script using the parameters outlined below
 
+Version 0.0.2 Notes:
+--------------------
+- Added configuration file system
+- Changed Luxafor Webhook ID to read from config file instead of being staticly set in the script
+- CLI format fixes/updates
+- General code cleanup and commenting
+
 Help Menu
 ---------
  
