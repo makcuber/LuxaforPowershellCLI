@@ -80,6 +80,7 @@ function genConfig {
     verifyLuxID -writeID $true -testLuxID $testLuxID -errorLoop $global:errorLoopCount
 }
 function config {
+    Write-Host ""
     if ((Test-Path -Path $configPath) -eq $true) {
         Write-Host "Config file found"
         $testLuxID = $(Get-Content -Path $configPath)
@@ -124,6 +125,7 @@ function listArray {
     foreach ($item in $array) {
         Write-Host " - $item"
     }
+    Write-Host ""
 }
 function listColours {
     listArray -array $colours
@@ -132,11 +134,11 @@ function listPatterns {
     listArray -array $patterns
 }
 function setColour {
-    Param([string]$colour,[string]$luxid_passed)
+    Param([string]$colour)
     
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = "$luxid_passed" #must be in qoutes
+            userId = "$global:luxID" #must be in qoutes
             actionFields = @{ color = "$colour" }
         } | ConvertTo-Json
         
@@ -147,19 +149,19 @@ function setColour {
             ContentType = 'application/json'
         }
 
-        Invoke-RestMethod @params -UseDefaultCredentials
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host "Error: Invalid Colour \"$colour\""
+        Write-Host "Error: Invalid Colour ($colour)"
         Write-Host "Valid colours are: "
         listColours
     }
 }
 function setBlink {
-    Param([string]$colour,[string]$luxid_passed)
+    Param([string]$colour)
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = "$luxid_passed" #must be in qoutes
+            userId = "$global:luxID" #must be in qoutes
             actionFields = @{ color = $colour }
         } | ConvertTo-Json
 
@@ -170,20 +172,20 @@ function setBlink {
             ContentType = 'application/json'
         }
 
-        Invoke-RestMethod @params -UseDefaultCredentials
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host 'Error: Invalid Colour "'$colour'"'
+        Write-Host "Error: Invalid Colour ($colour)"
         Write-Host ""
         Write-Host "Valid colours are: "
         listColours
     }
 }
 function setPattern {
-    Param([string]$pattern,[string]$luxid_passed)
+    Param([string]$pattern)
 
     if ((validatePattern -pattern $pattern) -eq $true) {
         $jsonData = @{
-            userId = "$luxid_passed" #must be in qoutes
+            userId = "$global:luxID" #must be in qoutes
             actionFields = @{ pattern = $pattern }
         } | ConvertTo-Json
 
@@ -194,9 +196,9 @@ function setPattern {
             ContentType = 'application/json'
         }
 
-        Invoke-RestMethod @params -UseDefaultCredentials
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
     } else {
-        Write-Host 'Error: Invalid pattern "'$pattern'"'
+        Write-Host "Error: Invalid pattern $pattern"
         Write-Host ""
         Write-Host "Valid paterns are: "
         listPatterns
@@ -212,7 +214,7 @@ function serviceMode {
         $currentuser = gwmi -Class win32_computersystem | select -ExpandProperty username
         $process = get-process logonui -ea silentlycontinue
         $lockState = ($currentuser -and $process)
-        echoVerbose "LockState: $lockState"
+        Write-Host "LockState: $lockState"
 
         if ($lockState -eq $true) {
             $onlineLock = $false
@@ -255,9 +257,9 @@ echoVerbose ""
 config
 
 switch ($args[0]) {
-    -colour { setColour -colour $args[1] -luxid_passed $global:luxID; break }
-    -blink { setBlink -colour $args[1] -luxid_passed $global:luxID; break }
-    -pattern { setPattern -pattern $args[1] -luxid_passed $global:luxID; break }
+    -colour { setColour -colour $args[1]; break }
+    -blink { setBlink -colour $args[1]; break }
+    -pattern { setPattern -pattern $args[1]; break }
     -service { serviceMode; break }
     default { showHelp; break}
 }
