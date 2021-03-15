@@ -317,5 +317,5 @@ switch ($args[0]) {
     -pattern { setPattern -pattern $args[1]; break }
     -service { serviceMode; break }
     -help { showHelp; break}
-    default { break}
+    default { showHelp; break}
 }
