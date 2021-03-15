@@ -14,7 +14,8 @@ $scanPeriod = 5
 $global:echoOn = $verbose
 
 #Config Path defaults to same directory as the script
-$configPath = "./luxid.conf"
+
+$configPath = "$PSScriptRoot/luxid.conf"
 
 #Count of how many times an error has looped
 $global:errorLoopCount=0
@@ -82,14 +83,14 @@ function genConfig {
 function config {
     Write-Host ""
     if ((Test-Path -Path $configPath) -eq $true) {
-        Write-Host "Config file found"
+        Write-Host "Config file found ($configPath)"
         $testLuxID = $(Get-Content -Path $configPath)
         echoVerbose "Imported LuxID: $testLuxID"
 
         #add luxID valiation here
         verifyLuxID -testLuxID $testLuxID
 
-        Write-Host "LuxID Set: $global:luxID"
+        Write-Host "LuxID Set: $($global:luxID)"
         Write-Host ""
     } else {
         Write-Host "Error: No config file found"
@@ -113,7 +114,8 @@ function validateItem {
     return $isValid
 }
 function validateColour {
-    Param([string]$colour)
+	[alias("validateColor")]
+	Param([Alias("color")][string]$colour)
     return $(validateItem -item $colour -array $colours)
 }
 function validatePattern {
@@ -128,17 +130,20 @@ function listArray {
     Write-Host ""
 }
 function listColours {
+	[alias("listColors")]
+	Param()
     listArray -array $colours
 }
 function listPatterns {
     listArray -array $patterns
 }
 function setColour {
-    Param([string]$colour)
+    [alias("setColor")]
+	Param([Alias("color")][string]$colour)
     
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
-            userId = "$global:luxID" #must be in qoutes
+            userId = "$global:luxID" #must be in quotes
             actionFields = @{ color = "$colour" }
         } | ConvertTo-Json
         
@@ -156,8 +161,54 @@ function setColour {
         listColours
     }
 }
+
+function setCustomColour {
+   [alias("setCustomColor")]
+	Param([Alias("color")][string]$colour)
+    $regex = $colour -Match '^[\d|A-Z|a-z]{6}$'
+    if (($regex) -and $colour) {
+        $jsonData = @{
+            userId = "$global:luxID" #must be in qoutes
+            actionFields = @{
+				color = "custom"
+				custom_color = $colour
+			}
+        } | ConvertTo-Json
+        
+        $params = @{
+            Uri         = $APIurl['solid']
+            Method      = 'POST'
+            Body        = $jsonData #already in json format
+            ContentType = 'application/json'
+        }
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
+	} else {
+        Write-Host "Error: Invalid Custom Colour ($colour)"
+        Write-Host "Valid colours are 6 symbol hex color codes."
+    }
+}
+
+function setOff {
+        $jsonData = @{
+            userId = "$global:luxID" #must be in qoutes
+            actionFields = @{
+				color = "custom"
+				custom_color = "000000"
+			}
+        } | ConvertTo-Json
+        
+        $params = @{
+            Uri         = $APIurl['solid']
+            Method      = 'POST'
+            Body        = $jsonData #already in json format
+            ContentType = 'application/json'
+        }
+
+        $result=Invoke-RestMethod @params -UseDefaultCredentials
+}
+
 function setBlink {
-    Param([string]$colour)
+	Param([Alias("color")][string]$colour)
 
     if ((validateColour -colour $colour) -eq $true) {
         $jsonData = @{
@@ -237,7 +288,9 @@ function showHelp {
     Write-Host "NOTE: You must manually set the correct WebHook LuxID in this script before running"
     Write-Host ""
     Write-Host "Parameters:"
+    Write-Host " -off  : Turn off flag colour"
     Write-Host " -colour <colour>  :  Set a specific colour"
+    Write-Host " -customcolour <colour>  :  Set a custom colour by hex value"
     Write-Host " -blink <colour>   :  Trigger a blink event to a specific colour"
     Write-Host " -pattern <pattern>:  Trigger a pattern event"
     Write-Host " -service          :  Enable service mode that changes the colour based on the machines Screen Lock state"
@@ -257,9 +310,12 @@ echoVerbose ""
 config
 
 switch ($args[0]) {
+    -off { setOff; break }
     -colour { setColour -colour $args[1]; break }
+    -customcolour { setCustomcolour -colour $args[1]; break }
     -blink { setBlink -colour $args[1]; break }
     -pattern { setPattern -pattern $args[1]; break }
     -service { serviceMode; break }
+    -help { showHelp; break}
     default { showHelp; break}
 }
